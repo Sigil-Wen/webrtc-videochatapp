@@ -8,6 +8,7 @@ const Room = (props) => {
     const socketRef = useRef(); //refers to socket 
     const otherUser = useRef();
     const userStream = useRef(); //
+    const senders = useRef([]);
 
     useEffect(()=>{
         //asks user to grant access to audio and video, tehn ressolves promise to stream 
@@ -38,7 +39,7 @@ const Room = (props) => {
 
     function callUser(userID){
         peerRef.current = createPeer(userID); //builds webRTC function object, stores in peerRef
-        userStream.current.getTracks().forEach(track => peerRef.current.addTrack(track, userStream.current)) //returns all tracks from user streams, addstrack to peerRef streams
+        userStream.current.getTracks().forEach(track => senders.current.push(peerRef.current.addTrack(track, userStream.current))) //returns all tracks from user streams, addstrack to peerRef streams
     }
 
     //userID is person we are trying to call
@@ -129,12 +130,22 @@ const Room = (props) => {
         partnerVideo.current.srcObject = e.streams[0]; //gets stream and stores to srcObject of partnerVideo
     };
 
+    function shareScreen() {
+        navigator.mediaDevices.getDisplayMedia({ cursor: true }).then(stream => {
+            const screenTrack = stream.getTracks()[0]; 
+            senders.current.find(sender => sender.track.kind === 'video').replaceTrack(screenTrack); //replaces video stream with screen
+            screenTrack.onended = function() { //when screenshare ends
+                senders.current.find(sender => sender.track.kind === "video").replaceTrack(userStream.current.getTracks()[1]);
+            }
+        })
+    }
+
 
     return (
         <div>
-            <video autoPlay ref = {userVideo} /> 
-            <video autoPlay ref = {partnerVideo}/>
-
+            <video controls autoPlay ref = {userVideo} style={{height: 500, width: 500}} /> 
+            <video controls autoPlay ref = {partnerVideo}  style={{height: 500, width: 500}}/>
+            <button onClick={shareScreen}> Share Screen </button>
         </ div>
     )
 }
